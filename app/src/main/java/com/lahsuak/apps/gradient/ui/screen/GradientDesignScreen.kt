@@ -1,29 +1,21 @@
 package com.lahsuak.apps.gradient.ui.screen
 
-import android.app.WallpaperManager
-import android.content.Context
-import android.content.Intent
-import android.content.Intent.createChooser
-import android.graphics.Bitmap
 import android.graphics.Picture
-import android.media.MediaScannerConnection
-import android.net.Uri
-import android.os.Build
-import android.os.Environment
+import android.widget.Toast
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -45,24 +37,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.draw
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat.startActivity
+import androidx.compose.ui.unit.toSize
 import com.lahsuak.apps.gradient.R
+import com.lahsuak.apps.gradient.util.BitmapUtils.createBitmapFromPicture
+import com.lahsuak.apps.gradient.util.BitmapUtils.saveToDisk
+import com.lahsuak.apps.gradient.util.BitmapUtils.setWallpaper
+import com.lahsuak.apps.gradient.util.BitmapUtils.shareBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
-import java.io.File
-import kotlin.coroutines.resume
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
-
 
 @Preview
 @Composable
@@ -78,20 +74,13 @@ fun GradientDesignScreen() {
             Color.Blue,
             Color.Yellow,
             Color.Red,
-            Color.Green,
-//            Color.LightGray,
-//            Color.Cyan,
-//            Color.Black,
-//            Color.White
+            Color.Green
         )
     }
 
-    var colorCount by rememberSaveable {
-        mutableIntStateOf(5)
+    var colorCount by remember {
+        mutableIntStateOf(colors.size)
     }
-//    var colorCount2 by rememberSaveable {
-//        mutableIntStateOf(4)
-//    }
     var rotateAngle by rememberSaveable {
         mutableFloatStateOf(0f)
     }
@@ -102,9 +91,6 @@ fun GradientDesignScreen() {
         mutableStateOf(false)
     }
 
-    // This logic should live in your ViewModel - trigger a side effect to invoke URI sharing.
-    // checks permissions granted, and then saves the bitmap from a Picture that is already capturing content
-    // and shares it with the default share sheet.
     fun shareBitmapFromComposable() {
         coroutineScope.launch(Dispatchers.IO) {
             val bitmap = createBitmapFromPicture(picture)
@@ -113,15 +99,10 @@ fun GradientDesignScreen() {
         }
     }
 
+    var canvasSize by remember { mutableStateOf(Size.Zero) }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                shareBitmapFromComposable()
-            }) {
-                Icon(Icons.Default.Share, "share")
-            }
-        }
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         // [START android_compose_draw_into_bitmap]
         Box(Modifier.padding(padding)) {
@@ -131,8 +112,8 @@ fun GradientDesignScreen() {
                     .drawWithCache {
                         // Example that shows how to redirect rendering to an Android Picture and then
                         // draw the picture into the original destination
-                        val width = this.size.width.toInt()
-                        val height = this.size.height.toInt()
+                        val width = canvasSize.width.toInt()
+                        val height = canvasSize.height.toInt()
                         onDrawWithContent {
                             val pictureCanvas =
                                 androidx.compose.ui.graphics.Canvas(
@@ -141,7 +122,12 @@ fun GradientDesignScreen() {
                                         height
                                     )
                                 )
-                            draw(this, this.layoutDirection, pictureCanvas, this.size) {
+                            draw(
+                                this,
+                                this.layoutDirection,
+                                pictureCanvas,
+                                canvasSize
+                            ) {
                                 this@onDrawWithContent.drawContent()
                             }
                             picture.endRecording()
@@ -151,8 +137,17 @@ fun GradientDesignScreen() {
                     }
             ) {
                 RandomBackgroundScreen(
-                    colors,
-                    colorCount = { colorCount },
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight().onGloballyPositioned { coordinates ->
+                        canvasSize = coordinates.size.toSize()
+                    },
+                    colors = colors,
+                    colorCount = {
+                        if (colors.size > colorCount) {
+                            colorCount + 1
+                        } else {
+                            colorCount
+                        }
+                    },
                     rotateAngle = { rotateAngle },
                     isSweepEnable = { isSweepEnable },
                     isSweepGradientInside = { isSweepGradientInside }
@@ -160,7 +155,7 @@ fun GradientDesignScreen() {
             }
             Column(
                 Modifier
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(0.4f))
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
             ) {
@@ -170,67 +165,76 @@ fun GradientDesignScreen() {
                         .padding(top = 16.dp, start = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    IconButton(
-                        onClick = {
-                            if (isSweepEnable) {
-                                isSweepEnable = false
-                            }
-                            if (rotateAngle >= 360) {
-                                rotateAngle = 0f
-                            }
-                            rotateAngle += 45f
-                        },
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.Green)
+                    CircularIconButton(
+                        iconId = R.drawable.ic_arrow_dual_full,
+                        color = Color(0xFF88C6FE)
                     ) {
-                        Icon(
-                            painterResource(id = R.drawable.ic_arrow_dual_full), null,
-                            modifier = Modifier.rotate(rotateAngle)
-                        )
+                        if (isSweepEnable) {
+                            isSweepEnable = false
+                        }
+                        if (rotateAngle >= 360) {
+                            rotateAngle = 0f
+                        }
+                        rotateAngle += 45f
                     }
-                    IconButton(
-                        onClick = {
-                            if (!isSweepEnable) {
-                                isSweepEnable = true
-                            }
-                            isSweepGradientInside = !isSweepGradientInside
+                    CircularIconButton(
+                        iconId = if (isSweepGradientInside) {
+                            R.drawable.ic_arrow_double_vertical_in
+                        } else {
+                            R.drawable.ic_arrow_double_vertical_out
                         },
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.Green)
+                        color = Color(0xFF88C6FE)
                     ) {
-                        Icon(
-                            painterResource(
-                                id = if (isSweepGradientInside) {
-                                    R.drawable.ic_arrow_double_vertical_in
-                                } else {
-                                    R.drawable.ic_arrow_double_vertical_out
-                                }
-                            ), null
-                        )
+                        if (!isSweepEnable) {
+                            isSweepEnable = true
+                        }
+                        isSweepGradientInside = !isSweepGradientInside
                     }
-                    IconButton(
-                        onClick = { colorCount = Random.nextInt(2, 4) },
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color.Green)
+                    CircularIconButton(
+                        iconId = R.drawable.ic_shuffle,
+                        color = Color.Green
                     ) {
-                        Icon(painterResource(id = R.drawable.ic_shuffle), null)
+                        colorCount = Random.nextInt(2, colors.size)
+                    }
+                    CircularIconButton(
+                        iconId = R.drawable.ic_share,
+                        color = Color(0xFFFB8C00),
+                        contentDescription = stringResource(R.string.share)
+                    ) {
+                        shareBitmapFromComposable()
                     }
                 }
                 ColorsTray(
                     modifier = Modifier,
-                    colors
+                    colors = colors,
+                    onColorChange = { newColor, colorIndex ->
+                        if (colorIndex == -1) {
+                            val temp = mutableListOf<Color>()
+                            temp.addAll(colors)
+                            temp.add(newColor)
+                            colors.clear()
+                            colors.addAll(temp)
+                        } else {
+                            val temp = mutableListOf<Color>()
+                            temp.addAll(colors)
+                            temp.add(colorIndex, newColor)
+                            temp.removeAt(colorIndex + 1)
+                            colors.clear()
+                            colors.addAll(temp)
+                        }
+                    }
                 )
                 Button(
                     onClick = {
                         coroutineScope.launch(Dispatchers.IO) {
                             createBitmapFromPicture(picture).setWallpaper(context)
+                            withContext(Dispatchers.Main){
+                                Toast.makeText(context, "Wallpaper Successfully Set!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.LightGray.copy(0.6f),
+                        containerColor = Color.White.copy(0.7f),
                         contentColor = Color.Black
                     ), modifier = Modifier
                         .padding(bottom = 16.dp)
@@ -240,74 +244,26 @@ fun GradientDesignScreen() {
                 }
             }
         }
-
         // [END android_compose_draw_into_bitmap]
     }
 }
 
-fun Bitmap.setWallpaper(context: Context) {
-    val wallpaperManager = WallpaperManager.getInstance(context)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        wallpaperManager.setBitmap(this, null, true, WallpaperManager.FLAG_SYSTEM)
-        wallpaperManager.setWallpaperOffsetSteps(1F, 1F)
-    } else {
-        wallpaperManager.setBitmap(this)
+@Composable
+fun CircularIconButton(
+    @DrawableRes
+    iconId: Int,
+    contentDescription: String? = null,
+    color: Color = Color.White,
+    size: Dp = 40.dp,
+    onClick: () -> Unit = {},
+) {
+    IconButton(
+        onClick = { onClick() },
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(color)
+    ) {
+        Icon(painter = painterResource(id = iconId), contentDescription, tint = Color.Black)
     }
-}
-
-private fun createBitmapFromPicture(picture: Picture): Bitmap {
-    val bitmap = Bitmap.createBitmap(
-        picture.width,
-        picture.height,
-        Bitmap.Config.ARGB_8888
-    )
-
-    val canvas = android.graphics.Canvas(bitmap)
-    canvas.drawColor(android.graphics.Color.WHITE)
-    canvas.drawPicture(picture)
-    return bitmap
-}
-
-private suspend fun Bitmap.saveToDisk(context: Context): Uri {
-    val file = File(
-        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
-        "screenshot-${System.currentTimeMillis()}.png"
-    )
-
-    file.writeBitmap(this, Bitmap.CompressFormat.PNG, 100)
-
-    return scanFilePath(context, file.path) ?: throw Exception("File could not be saved")
-}
-
-
-private suspend fun scanFilePath(context: Context, filePath: String): Uri? {
-    return suspendCancellableCoroutine { continuation ->
-        MediaScannerConnection.scanFile(
-            context,
-            arrayOf(filePath),
-            arrayOf("image/png")
-        ) { _, scannedUri ->
-            if (scannedUri == null) {
-                continuation.cancel(Exception("File $filePath could not be scanned"))
-            } else {
-                continuation.resume(scannedUri)
-            }
-        }
-    }
-}
-
-private fun File.writeBitmap(bitmap: Bitmap, format: Bitmap.CompressFormat, quality: Int) {
-    outputStream().use { out ->
-        bitmap.compress(format, quality, out)
-        out.flush()
-    }
-}
-
-private fun shareBitmap(context: Context, uri: Uri) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "image/png"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    startActivity(context, createChooser(intent, "Share your image"), null)
 }
