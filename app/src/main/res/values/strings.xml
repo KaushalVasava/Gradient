@@ -9,4 +9,5 @@
     <string name="view">View</string>
     <string name="something_went_wrong">Something went wrong!</string>
     <string name="share_msg">Share your image</string>
+    <string name="cannot_remove_more">You can\'t remove color, Minimum 2 colors are required</string>
 </resources>
