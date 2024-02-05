@@ -22,7 +22,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -53,9 +52,6 @@ fun ColorsTray(
         Color.White
     ),
 ) {
-    val colorList by remember {
-        mutableStateOf(colors)
-    }
     var selectedIndex by rememberSaveable {
         mutableIntStateOf(-1)
     }
@@ -96,7 +92,7 @@ fun ColorsTray(
                 Icon(Icons.Default.Add, null, tint = Color.Black)
             }
         }
-        itemsIndexed(colorList) { index, item ->
+        itemsIndexed(colors) { index, item ->
             CircularColor(
                 item,
                 onRemoveClick = {

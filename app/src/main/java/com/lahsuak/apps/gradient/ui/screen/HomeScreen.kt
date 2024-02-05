@@ -99,7 +99,7 @@ fun HomeScreen() {
     var isShuffleEnable by rememberSaveable {
         mutableStateOf(false)
     }
-    var randomColor by rememberSaveable {
+    var shuffleColorCount by rememberSaveable {
         mutableIntStateOf(2)
     }
 
@@ -123,8 +123,8 @@ fun HomeScreen() {
                     actionLabel = context.getString(R.string.view),
                     duration = SnackbarDuration.Long
                 )
-                if(snackbarResult == SnackbarResult.ActionPerformed){
-                     AppUtils.openImageSelectorDialog(context, uri)
+                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                    AppUtils.openImageSelectorDialog(context, uri)
                 }
             }
         }
@@ -168,7 +168,7 @@ fun HomeScreen() {
                     colors = if (isShuffleEnable) randomColors else colors,
                     colorCount = {
                         if (isShuffleEnable) {
-                            randomColor
+                            shuffleColorCount
                         } else {
                             colors.size
                         }
@@ -223,7 +223,12 @@ fun HomeScreen() {
                         color = Color(0xFF88C6FE)
                     ) {
                         if (isShuffleEnable) {
-                            randomColor = Random.nextInt(2, randomColors.size)
+                            // colors needs to be filled when only two colors are left
+                            if (randomColors.size == 2) {
+                                randomColors.clear()
+                                randomColors.addAll(getInitialColors())
+                            }
+                            shuffleColorCount = Random.nextInt(2, randomColors.size)
                         }
                         isShuffleEnable = true
                     }
@@ -244,25 +249,38 @@ fun HomeScreen() {
                 }
                 ColorsTray(
                     modifier = Modifier,
-                    colors = colors,
+                    colors = if (isShuffleEnable) randomColors.take(shuffleColorCount) else colors,
                     onColorChange = { newColor, colorIndex ->
+                        val temp = mutableListOf<Color>()
+                        temp.addAll(if (isShuffleEnable) randomColors.take(shuffleColorCount) else colors)
                         if (colorIndex == -1) {
-                            val temp = mutableListOf<Color>()
-                            temp.addAll(colors)
                             temp.add(newColor)
-                            colors.clear()
-                            colors.addAll(temp)
                         } else {
-                            val temp = mutableListOf<Color>()
-                            temp.addAll(colors)
                             temp.add(colorIndex, newColor)
-                            temp.removeAt(colorIndex + 1)
+                            // minimum two colors are needed in gradient
+                            if (temp.size > 2) {
+                                temp.removeAt(colorIndex + 1)
+                            }
+                        }
+                        if (isShuffleEnable) {
+                            // add colors and increase shuffleColorCount to update UI based on these values
+                            randomColors.clear()
+                            randomColors.addAll(temp)
+                            shuffleColorCount++
+                        } else {
                             colors.clear()
                             colors.addAll(temp)
                         }
                     },
                     onRemoveClick = { index ->
-                        colors.removeAt(index)
+                        if (isShuffleEnable) {
+                            randomColors.removeAt(index)
+                            // minimum two colors are needed in gradient
+                            if (shuffleColorCount > 2)
+                                shuffleColorCount--
+                        } else {
+                            colors.removeAt(index)
+                        }
                     }
                 )
                 Button(
@@ -292,3 +310,21 @@ fun HomeScreen() {
         }
     }
 }
+
+
+fun getInitialColors(): List<Color> =
+    mutableStateListOf(
+        Color.Magenta,
+        Color.Blue,
+        Color.Yellow,
+        Color.Red,
+        Color.Green,
+        Color.Cyan,
+        Color.Black,
+        Color.White,
+        Color.DarkGray,
+        Color(0xFFFB8C00),
+        Color(0xFF039BE5),
+        Color(0xFF5300FC),
+        Color(0xFF5300FC),
+    )
