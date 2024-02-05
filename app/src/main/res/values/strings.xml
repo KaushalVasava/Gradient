@@ -1,3 +1,12 @@
 <resources>
-    <string name="app_name">Gradient</string>
+    <string name="app_name">Gradient Wallpaper</string>
+    <string name="share">Share</string>
+    <string name="set_wallpaper_msg">Wallpaper Successfully Set!</string>
+    <string name="set_wallpaper">Set Wallpaper</string>
+    <string name="remove">Remove</string>
+    <string name="save">Save</string>
+    <string name="save_success_msg">Save Successfully!</string>
+    <string name="view">View</string>
+    <string name="something_went_wrong">Something went wrong!</string>
+    <string name="share_msg">Share your image</string>
 </resources>
