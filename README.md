@@ -17,6 +17,9 @@ https://github.com/KaushalVasava/Gradient/assets/49050597/5a2c02be-407d-4393-82a
 - Storage access
 - Wallpaper API
 
+# Expected Feature and Version:
+- I want this app to be migrated to Kotlin Multiplatform and I would love to have other developers contribute to it, so beginners also learn from this small project how to implement features for Android, IOS and Desktop using KMP.
+
 # Note and Contribution Guide
 - It is use for local use and in this project design pattern are not a primary focuse so I use MVC architecture not MVVM. Some logic also not so good, you can raise PR if you want to improve it.
 
